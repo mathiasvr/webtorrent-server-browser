@@ -53,10 +53,12 @@ function serveFile (file, req) {
     res.headers['Content-Length'] = file.length
   }
 
+  res.headers['Cache-Control'] = 'no-store'
+
   res.body = req.method === 'HEAD' ? '' : 'stream'
 
   console.log('set parser', range)
-  parser = new MatroskaSubtitles(parser ? { prevInstance: parser, offset: range.start} : {}) 
+  parser = new MatroskaSubtitles({ prevInstance: parser, offset: range.start }) 
 
   parser.once('tracks', function (tracks) {
     console.log(tracks)

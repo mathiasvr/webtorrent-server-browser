@@ -1,4 +1,4 @@
-import MatroskaSubtitles from 'matroska-subtitles'
+import { SubtitleStream } from 'matroska-subtitles'
 
 const client = new WebTorrent()
 // const sintel = 'magnet:?xt=urn:btih:08ada5a7a6183aae1e09d831df6748d566095a10&dn=Sintel&tr=udp%3A%2F%2Fexplodie.org%3A6969&tr=udp%3A%2F%2Ftracker.coppersurfer.tk%3A6969&tr=udp%3A%2F%2Ftracker.empire-js.us%3A1337&tr=udp%3A%2F%2Ftracker.leechers-paradise.org%3A6969&tr=udp%3A%2F%2Ftracker.opentrackr.org%3A1337&tr=wss%3A%2F%2Ftracker.btorrent.xyz&tr=wss%3A%2F%2Ftracker.fastcast.nz&tr=wss%3A%2F%2Ftracker.openwebtorrent.com&ws=https%3A%2F%2Fwebtorrent.io%2Ftorrents%2F'
@@ -6,7 +6,7 @@ const mkv = 'magnet:?xt=urn:btih:db5d889aa12177fedb39be6886e15bb6711f3e41&dn=ch_
 const scope = './'
 const sw = navigator.serviceWorker.register(`sw.js`, { scope })
 
-let parser
+let subtitleStream
 
 // client.add(sintel, async function(torrent) {
 //   await sw
@@ -23,6 +23,7 @@ client.add(mkv, async function(torrent) {
   video.controls = true
   video.src = `${scope}webtorrent/${torrent.infoHash}/${encodeURI(torrent.files[0].path)}`
   video.style.width = '400px'
+  video.autoplay = true
   document.body.appendChild(video)
 })
 
@@ -53,29 +54,38 @@ function serveFile (file, req) {
     res.headers['Content-Length'] = file.length
   }
 
-  res.headers['Cache-Control'] = 'no-store'
+  res.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate, max-age=0'
+  res.headers['Expires'] = '0'
 
   res.body = req.method === 'HEAD' ? '' : 'stream'
 
-  console.log('set parser', range)
-  parser = new MatroskaSubtitles({ prevInstance: parser, offset: range.start }) 
+  console.log('set stream range:', range)
 
-  parser.once('tracks', function (tracks) {
-    console.log(tracks)
-  })
+  if (subtitleStream) {
+    subtitleStream = subtitleStream.seekTo(range.start)
+  } else {  
+    if (range.start !== 0) {
+      console.error('Starting subtitle stream at unstable position')
+    }
 
-  parser.once('cues', function (tracks) {
+    subtitleStream = new SubtitleStream() 
+
+    subtitleStream.once('tracks', function (tracks) {
+      console.log(tracks)
+    })
+  }
+
+  subtitleStream.once('cues', function () {
     console.log('seeking ready')
   })
-  
-  parser.on('subtitle', function (subtitle, trackNumber) {
+
+  subtitleStream.on('subtitle', function (subtitle, trackNumber) {
     console.log('Track ' + trackNumber + ':', subtitle)
   })
 
-  // parser is really a passthrough mkv stream now
-  file.createReadStream(range).pipe(parser)
+  file.createReadStream(range).pipe(subtitleStream)
 
-  return [res, req.method === 'GET' && parser]
+  return [res, req.method === 'GET' && subtitleStream]
 }
 
 // kind of a fetch event from service worker but for the main thread.

@@ -11,7 +11,6 @@
     "webpack-cli": "^3.3.12"
   },
   "scripts": {
-    "build-fix": "webpack --mode=development --resolve-alias ebml=ebml/lib/ebml.esm.js",
     "build": "webpack --mode=development",
     "test": "echo \"Error: no test specified\" && exit 1"
   }

@@ -1,3 +1,4 @@
+import WebTorrent from 'webtorrent'
 import { SubtitleStream } from 'matroska-subtitles'
 
 const client = new WebTorrent()
@@ -20,10 +21,12 @@ let subtitleStream
 client.add(mkv, async function(torrent) {
   await sw
   const video = document.createElement('video')
+  // append random string to avoid serving cached version
+  const randomString = Math.random().toString(36).substring(2, 7)
+  video.src = `${scope}webtorrent/${torrent.infoHash}/${encodeURI(torrent.files[0].path)}?ran=${randomString}`
   video.controls = true
-  video.src = `${scope}webtorrent/${torrent.infoHash}/${encodeURI(torrent.files[0].path)}`
   video.style.width = '400px'
-  video.autoplay = true
+  // video.autoplay = true
   document.body.appendChild(video)
 })
 
@@ -62,7 +65,7 @@ function serveFile (file, req) {
   console.log('set stream range:', range)
 
   if (subtitleStream) {
-    subtitleStream = subtitleStream.seekTo(range.start)
+    subtitleStream = new SubtitleStream(subtitleStream)
   } else {  
     if (range.start !== 0) {
       console.error('Starting subtitle stream at unstable position')
@@ -74,10 +77,6 @@ function serveFile (file, req) {
       console.log(tracks)
     })
   }
-
-  subtitleStream.once('cues', function () {
-    console.log('seeking ready')
-  })
 
   subtitleStream.on('subtitle', function (subtitle, trackNumber) {
     console.log('Track ' + trackNumber + ':', subtitle)
@@ -100,6 +99,8 @@ navigator.serviceWorker.addEventListener('message', evt => {
   const pathname = request.url.split(evt.data.scope + 'webtorrent/')[1]
   let [ infoHash, ...filePath ] = pathname.split('/')
   filePath = decodeURI(filePath.join('/'))
+  // remove random query string
+  filePath = filePath.substring(0, filePath.indexOf('?ran'))
 
   if (!infoHash || !filePath) return
 

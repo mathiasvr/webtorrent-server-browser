@@ -4,10 +4,11 @@
   "description": "test `torrent.createServer()` using service worker",
   "private": true,
   "dependencies": {
-    "matroska-subtitles": "github:mathiasvr/matroska-subtitles#cues"
+    "matroska-subtitles": "^3.0.0",
+    "webtorrent": "^0.108.6"
   },
   "devDependencies": {
-    "webpack": "^4.44.1",
+    "webpack": "^4.44.2",
     "webpack-cli": "^3.3.12"
   },
   "scripts": {
